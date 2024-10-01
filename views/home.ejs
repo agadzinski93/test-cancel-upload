@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Upload Test</title>
+    <style>
+        main {
+            width:50%;
+            margin:0 auto;
+        }
+        h1 {
+            text-align:center;
+            font-size:3rem;
+        }
+        ol, p {
+            text-align:center;
+        }
+        li {
+            list-style-type: none;
+        }
+        li::before {
+            content: '- '
+        }
+        form {
+            display:flex;
+            flex-flow:column;
+            gap:2rem;
+        }
+        form * {
+            margin:0 auto;
+        }
+        form input[type=submit] {
+            width:fit-content;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Test Uploading a File</h1>
+        <ol>
+            <li>Make sure to have your browser's Console or Network tab open</li>
+            <li>Upload a file &lpar;preferably over 10MB since small files usually succeed&rpar;</li>
+        </ol>
+        <section class="notes">
+            <p>Note: Nothing is actually uploaded, rather the file stream gets deleted immediately. Even if you remove the file.destroy&lpar;&rpar; method call, the entire file is dumped into memory only for the duration of the HTTP request.</p>
+            <p>Note: Small files will typically succeed. It's the larger ones that cause problems.</p>
+        </section>
+        <form id="upload-form">
+            <label for="file"></label>
+            <input type="file" name="file" id="file">
+            <input type="submit" value="Upload File (Recommend >= 10MB)" id="btn-upload">
+        </form>
+        <p>Expected Output: Success - Status: 400, Message: Stream destroyed</p>
+        <p>Output: <span id="output"></span></p>
+    </main>
+    <script>
+        const send = (url, {method = 'GET', body}) => {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+
+                xhr.responseType = 'json';
+                xhr.addEventListener('error', (err) => {
+                    reject(err);
+                });
+                xhr.addEventListener('load', () => {
+                    resolve(xhr.response);
+                });
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        console.log(`Loaded: ${e.loaded}`);
+                        console.log(`Total: ${e.total}`);
+                        console.log(`Completed: ${Math.floor(e.loaded / e.total * 100)}%`);
+                    }
+                };
+                xhr.open(method, url);
+                if (body) {
+                    xhr.send(body);
+                } else {
+                    xhr.send();
+                }
+            })
+        }
+        const uploadEvent = async (e) => {
+            e.preventDefault();
+            let response = '';
+            const div = document.getElementById('output');
+            try {
+                const formData = new FormData(document.getElementById('upload-form'));
+
+                /*
+                    Promisified XHR Method
+                */
+                /* const data = await send('http://localhost:3000',{
+                    method:'POST',
+                    body: formData
+                }); */
+
+
+                /*
+                    Fetch API Method
+                */
+                const output = await fetch('http://localhost:3000/',{
+                    method:'POST',
+                    body:formData
+                });
+                const data = await output.json();
+                console.log(data);
+                response = `Success - Status: ${data.status}, Message: ${data.message}`;
+                div.style.backgroundColor = '#014E18';
+                div.style.color = '#FFF';
+            } catch(err) {
+                console.error(err);
+                response = err.message || 'Network Error';
+                div.style.backgroundColor = '#750303';
+                div.style.color = '#FFF';
+            } finally {
+                div.textContent = response;
+            }
+        }
+        (function main() {
+            document.getElementById('btn-upload').addEventListener('click', uploadEvent);
+        })();
+    </script>
+</body>
+</html>
